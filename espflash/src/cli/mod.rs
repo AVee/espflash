@@ -49,6 +49,7 @@ use crate::{
     },
     targets::{Chip, XtalFrequency},
 };
+use crate::elf::FirmwareImage;
 
 pub mod config;
 pub mod monitor;
@@ -741,16 +742,16 @@ pub fn erase_region(args: EraseRegionArgs, config: &Config) -> Result<()> {
 }
 
 /// Write an ELF image to a target device's flash
-pub fn flash_elf_image(
+pub fn flash_elf_image<'a: 'b, 'b>(
     flasher: &mut Flasher,
-    elf_data: &[u8],
+    image: &'b dyn FirmwareImage<'a>,
     flash_data: FlashData,
     xtal_freq: XtalFrequency,
 ) -> Result<()> {
     // Load the ELF data, optionally using the provider bootloader/partition
     // table/image format, to the device's flash memory.
     flasher.load_elf_to_flash(
-        elf_data,
+        image,
         flash_data,
         Some(&mut EspflashProgress::default()),
         xtal_freq,

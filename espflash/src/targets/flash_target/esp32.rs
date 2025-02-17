@@ -165,7 +165,7 @@ impl FlashTarget for Esp32Target {
                     addr
                 );
                 return Ok(());
-            }
+            } 
         }
 
         let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());

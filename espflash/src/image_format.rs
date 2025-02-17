@@ -15,7 +15,7 @@ use crate::{
 };
 
 const ESP_CHECKSUM_MAGIC: u8 = 0xef;
-const ESP_MAGIC: u8 = 0xE9;
+pub const ESP_MAGIC: u8 = 0xE9;
 const IROM_ALIGN: u32 = 0x10000;
 const SEG_HEADER_LEN: u32 = 8;
 const WP_PIN_DISABLED: u8 = 0xEE;
@@ -28,9 +28,9 @@ const WP_PIN_DISABLED: u8 = 0xEE;
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 #[repr(C, packed)]
 #[doc(alias = "esp_image_header_t")]
-struct ImageHeader {
+pub(crate) struct ImageHeader {
     magic: u8,
-    segment_count: u8,
+    pub(crate) segment_count: u8,
     /// Flash read mode (esp_image_spi_mode_t)
     flash_mode: u8,
     /// ..4 bits are flash chip size (esp_image_flash_size_t)
@@ -38,7 +38,7 @@ struct ImageHeader {
     #[doc(alias = "spi_size")]
     #[doc(alias = "spi_speed")]
     flash_config: u8,
-    entry: u32,
+    pub(crate) entry: u32,
 
     // extended header part
     wp_pin: u8,
@@ -96,9 +96,9 @@ impl ImageHeader {
 
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 #[repr(C, packed)]
-struct SegmentHeader {
-    addr: u32,
-    length: u32,
+pub(crate) struct SegmentHeader {
+    pub(crate) addr: u32,
+    pub(crate) length: u32,
 }
 
 /// Image format for ESP32 family chips using the second-stage bootloader from
@@ -117,7 +117,7 @@ pub struct IdfBootloaderFormat<'a> {
 impl<'a> IdfBootloaderFormat<'a> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        image: &'a dyn FirmwareImage<'a>,
+        image: &dyn FirmwareImage<'a>,
         chip: Chip,
         min_rev_full: u16,
         params: Esp32Params,
@@ -208,7 +208,12 @@ impl<'a> IdfBootloaderFormat<'a> {
         let mut checksum = ESP_CHECKSUM_MAGIC;
         let mut segment_count = 0;
 
+        eprintln!("Segments: {:#?}", flash_segments.len());
+        eprintln!("RAM Segments: {:#?}", ram_segments.len());
+        eprintln!();
+        
         for segment in flash_segments {
+            eprintln!("Content: {:#?}", segment.data().len());
             loop {
                 let pad_len = get_segment_padding(data.len(), &segment);
                 if pad_len > 0 {

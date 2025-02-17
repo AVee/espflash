@@ -145,13 +145,13 @@ impl Target for Esp32s2 {
         })
     }
 
-    fn get_flash_image<'a>(
+    fn get_flash_image<'a: 'b, 'b>(
         &self,
-        image: &'a dyn FirmwareImage<'a>,
+        image: &'b dyn FirmwareImage<'a>,
         flash_data: FlashData,
         _chip_revision: Option<(u32, u32)>,
         xtal_freq: XtalFrequency,
-    ) -> Result<IdfBootloaderFormat<'a>, Error> {
+    ) -> Result<IdfBootloaderFormat<'b>, Error> {
         if xtal_freq != XtalFrequency::_40Mhz {
             return Err(Error::UnsupportedFeature {
                 chip: Chip::Esp32s2,

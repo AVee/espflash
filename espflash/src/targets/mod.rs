@@ -344,13 +344,13 @@ pub trait Target: ReadEFuse {
     }
 
     /// Build an image from the provided data for flashing
-    fn get_flash_image<'a>(
+    fn get_flash_image<'a: 'b, 'b>(
         &self,
-        image: &'a dyn FirmwareImage<'a>,
+        image: &'b dyn FirmwareImage<'a>,
         flash_data: FlashData,
         chip_revision: Option<(u32, u32)>,
         xtal_freq: XtalFrequency,
-    ) -> Result<IdfBootloaderFormat<'a>, Error>;
+    ) -> Result<IdfBootloaderFormat<'b>, Error>;
 
     #[cfg(feature = "serialport")]
     /// What is the MAC address?

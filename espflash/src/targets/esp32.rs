@@ -152,13 +152,13 @@ impl Target for Esp32 {
         Ok(norm_xtal)
     }
 
-    fn get_flash_image<'a>(
+    fn get_flash_image<'a: 'b, 'b>(
         &self,
-        image: &'a dyn FirmwareImage<'a>,
+        image: &'b dyn FirmwareImage<'a>,
         flash_data: FlashData,
         _chip_revision: Option<(u32, u32)>,
         xtal_freq: XtalFrequency,
-    ) -> Result<IdfBootloaderFormat<'a>, Error> {
+    ) -> Result<IdfBootloaderFormat<'b>, Error> {
         let booloader: &'static [u8] = match xtal_freq {
             XtalFrequency::_40Mhz => {
                 include_bytes!("../../resources/bootloaders/esp32-bootloader.bin")

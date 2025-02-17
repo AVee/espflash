@@ -30,7 +30,7 @@ use crate::{
         Connection,
         Port,
     },
-    elf::{ElfFirmwareImage, FirmwareImage, RomSegment},
+    elf::{FirmwareImage, RomSegment},
     error::{ConnectionError, ResultExt},
     flasher::stubs::{
         FlashStub,
@@ -1008,12 +1008,12 @@ impl Flasher {
     /// Load an ELF image to RAM and execute it
     ///
     /// Note that this will not touch the flash on the device
-    pub fn load_elf_to_ram(
+    pub fn load_elf_to_ram<'a: 'b, 'b>(
         &mut self,
-        elf_data: &[u8],
+        image: &'b dyn FirmwareImage<'a>,
         mut progress: Option<&mut dyn ProgressCallbacks>,
     ) -> Result<(), Error> {
-        let image = ElfFirmwareImage::try_from(elf_data)?;
+        // let image = ElfFirmwareImage::try_from(elf_data)?;
         if image.rom_segments(self.chip).next().is_some() {
             return Err(Error::ElfNotRamLoadable);
         }
@@ -1036,14 +1036,14 @@ impl Flasher {
     }
 
     /// Load an ELF image to flash and execute it
-    pub fn load_elf_to_flash(
+    pub fn load_elf_to_flash<'a: 'b, 'b>(
         &mut self,
-        elf_data: &[u8],
+        image: &'b dyn FirmwareImage<'a>,
         flash_data: FlashData,
         mut progress: Option<&mut dyn ProgressCallbacks>,
         xtal_freq: XtalFrequency,
     ) -> Result<(), Error> {
-        let image = ElfFirmwareImage::try_from(elf_data)?;
+        // let image = ElfFirmwareImage::try_from(elf_data)?;
 
         let mut target =
             self.chip
@@ -1057,7 +1057,7 @@ impl Flasher {
         );
 
         let image = self.chip.into_target().get_flash_image(
-            &image,
+            image,
             flash_data,
             chip_revision,
             xtal_freq,

@@ -34,11 +34,12 @@ pub use self::error::Error;
 #[cfg(feature = "serialport")]
 #[cfg_attr(docsrs, doc(cfg(feature = "serialport")))]
 pub mod connection;
+pub mod esp_firmware_image;
 pub mod flasher;
 pub mod image_format;
 pub mod targets;
 
-mod elf;
+pub mod elf;
 mod error;
 
 // Command-line interface

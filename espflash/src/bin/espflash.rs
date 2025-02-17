@@ -1,3 +1,4 @@
+use espflash::image_format;
 use std::{
     fs::{self, File},
     io::Read,
@@ -15,6 +16,9 @@ use espflash::{
 };
 use log::{debug, info, LevelFilter};
 use miette::{IntoDiagnostic, Result, WrapErr};
+use xmas_elf::header;
+use espflash::elf::{ElfFirmwareImage, FirmwareImage};
+use espflash::esp_firmware_image::EspFirmwareImage;
 
 #[derive(Debug, Parser)]
 #[command(about, max_term_width = 100, propagate_version = true, version)]
@@ -259,10 +263,11 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
     let target_xtal_freq = target.crystal_freq(flasher.connection())?;
 
     // Read the ELF data from the build path and load it to the target.
-    let elf_data = fs::read(&args.image).into_diagnostic()?;
+    let file_data = fs::read(&args.image).into_diagnostic()?;
+    let image = image_from_bytes(&file_data)?;
 
     if args.flash_args.ram {
-        flasher.load_elf_to_ram(&elf_data, Some(&mut EspflashProgress::default()))?;
+        flasher.load_elf_to_ram(image.as_ref(), Some(&mut EspflashProgress::default()))?;
     } else {
         let flash_data = make_flash_data(
             args.flash_args.image,
@@ -281,7 +286,7 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
             )?;
         }
 
-        flash_elf_image(&mut flasher, &elf_data, flash_data, target_xtal_freq)?;
+        flash_elf_image(&mut flasher, image.as_ref(), flash_data, target_xtal_freq)?;
     }
 
     if args.flash_args.monitor {
@@ -299,9 +304,21 @@ fn flash(args: FlashArgs, config: &Config) -> Result<()> {
 
         monitor_args.elf = Some(args.image);
 
-        monitor(flasher.into_serial(), Some(&elf_data), pid, monitor_args)
+        monitor(flasher.into_serial(), None, pid, monitor_args)
     } else {
         Ok(())
+    }
+}
+
+fn image_from_bytes<'a, 'b: 'a>(elf_data: &'b [u8]) -> Result<Box<dyn FirmwareImage<'a> + 'a>> {
+    if elf_data.len() < 4 {
+        todo!() // ERRORS
+    } else if elf_data.starts_with(&header::MAGIC) {
+        Ok(Box::new(ElfFirmwareImage::try_from(elf_data).unwrap()))
+    } else if elf_data[0] == image_format::ESP_MAGIC {
+        Ok(Box::new(EspFirmwareImage::new(elf_data)))
+    } else {
+        todo!()
     }
 }
 

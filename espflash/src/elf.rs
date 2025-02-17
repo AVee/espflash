@@ -9,7 +9,6 @@ use std::{
 };
 
 use xmas_elf::{
-    program::Type,
     sections::{SectionData, ShType},
     ElfFile,
 };
@@ -25,13 +24,10 @@ pub trait FirmwareImage<'a> {
     fn entry(&self) -> u32;
 
     /// Firmware image segments
-    fn segments(&'a self) -> Box<dyn Iterator<Item = CodeSegment<'a>> + 'a>;
-
-    /// Firmware image segments, with their associated load addresses
-    fn segments_with_load_addresses(&'a self) -> Box<dyn Iterator<Item = CodeSegment<'a>> + 'a>;
+    fn segments(&self) -> Box<dyn Iterator<Item = CodeSegment<'_>> + '_>;
 
     /// Firmware image ROM segments
-    fn rom_segments(&'a self, chip: Chip) -> Box<dyn Iterator<Item = CodeSegment<'a>> + 'a> {
+    fn rom_segments(&self, chip: Chip) -> Box<dyn Iterator<Item = CodeSegment<'_>> + '_> {
         Box::new(
             self.segments()
                 .filter(move |segment| chip.into_target().addr_is_flash(segment.addr)),
@@ -39,7 +35,7 @@ pub trait FirmwareImage<'a> {
     }
 
     /// Firmware image RAM segments
-    fn ram_segments(&'a self, chip: Chip) -> Box<dyn Iterator<Item = CodeSegment<'a>> + 'a> {
+    fn ram_segments(&self, chip: Chip) -> Box<dyn Iterator<Item = CodeSegment<'_>> + '_> {
         Box::new(
             self.segments()
                 .filter(move |segment| !chip.into_target().addr_is_flash(segment.addr)),
@@ -59,7 +55,7 @@ impl<'a> ElfFirmwareImage<'a> {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for ElfFirmwareImage<'a> {
+impl<'a, 'b: 'a> TryFrom<&'b [u8]> for ElfFirmwareImage<'a> {
     type Error = Error;
 
     fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
@@ -76,7 +72,7 @@ impl<'a> FirmwareImage<'a> for ElfFirmwareImage<'a> {
         self.elf.header.pt2.entry_point() as u32
     }
 
-    fn segments(&'a self) -> Box<dyn Iterator<Item = CodeSegment<'a>> + 'a> {
+    fn segments(&self) -> Box<dyn Iterator<Item = CodeSegment<'_>> + '_> {
         Box::new(
             self.elf
                 .section_iter()
@@ -92,25 +88,6 @@ impl<'a> FirmwareImage<'a> for ElfFirmwareImage<'a> {
                         Ok(SectionData::Undefined(data)) => data,
                         _ => return None,
                     };
-                    Some(CodeSegment::new(addr, data))
-                }),
-        )
-    }
-
-    fn segments_with_load_addresses(&'a self) -> Box<dyn Iterator<Item = CodeSegment<'a>> + 'a> {
-        Box::new(
-            self.elf
-                .program_iter()
-                .filter(|header| {
-                    header.file_size() > 0
-                        && header.get_type() == Ok(Type::Load)
-                        && header.offset() > 0
-                })
-                .flat_map(move |header| {
-                    let addr = header.physical_addr() as u32;
-                    let from = header.offset() as usize;
-                    let to = header.offset() as usize + header.file_size() as usize;
-                    let data = &self.elf.input[from..to];
                     Some(CodeSegment::new(addr, data))
                 }),
         )
